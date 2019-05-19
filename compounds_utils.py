@@ -8,7 +8,7 @@ from isanlp import PipelineCommon
 from sklearn.preprocessing import normalize
 
 
-def acquiring(comp, model, true_label, model_words=None):
+def acquiring(comp, model, true_label, model_words=None, skip_invalid_labels=True):
     ppl = PipelineCommon([
         (ProcessorTokenizerRu(), ['text'], {0 : 'tokens'}),
         (ProcessorSentenceSplitter(), ['tokens'], {0 : 'sentences'}),
@@ -23,9 +23,10 @@ def acquiring(comp, model, true_label, model_words=None):
     if model_words is None:
         model_words = model
     
+    indexes = []
     for i in comp.index:
         label = comp.loc[i, true_label]
-        if label not in {0., 1.}:
+        if skip_invalid_labels and label not in {0., 1.}:
             continue
             
         anns = ppl('{} {}'.format(comp.loc[i, 'Часть 1'], comp.loc[i, 'Часть 2']))['lemma'][0]
@@ -35,6 +36,7 @@ def acquiring(comp, model, true_label, model_words=None):
             vec_w1 = model_words[anns[0]]
             vec_w2 = model_words[anns[1]]
             vec_comp = model['{}_{}'.format(anns[0], anns[1])]
+            indexes.append(i)
         except KeyError:
             continue
         
@@ -45,7 +47,7 @@ def acquiring(comp, model, true_label, model_words=None):
     
     print('Number of examples: ', len(v_w1))
     
-    return np.array(v_w1), np.array(v_w2), np.array(v_comp), np.array(true_class)
+    return np.array(v_w1), np.array(v_w2), np.array(v_comp), np.array(true_class), comp.loc[indexes]
 
 
 def average_normalized(p1, p2):
